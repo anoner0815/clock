@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wort-Uhr</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;700&display=swap');
+
+        body {
+            background-color: #2c2c2e;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Roboto Mono', monospace;
+        }
+
+        #clock-container {
+            display: grid;
+            grid-template-columns: repeat(11, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+            gap: 12px;
+            padding: 25px;
+            background-color: #8b4513; /* Rostbraun */
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            width: 90vw;
+            max-width: 500px;
+            aspect-ratio: 11 / 10;
+        }
+
+        .letter {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: clamp(1rem, 4vw, 2rem);
+            transition: color 0.5s ease-in-out, text-shadow 0.5s ease-in-out;
+            font-weight: 300;
+        }
+
+        .dim {
+            color: #6a3e29;
+        }
+
+        .lit {
+            color: #ffffff;
+            text-shadow: 0 0 5px #fff, 0 0 10px #fff;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="clock-container"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('clock-container');
+
+            // Das Buchstaben-Raster der Uhr
+            const gridLayout = [
+                "ESKISTAFÜNF",
+                "ZEHNZWANZIG",
+                "DREIVIERTEL",
+                "VORFUNKNACH",
+                "HALBAELFÜNF",
+                "EINSXAMZWEI",
+                "DREIPMJVIER",
+                "SECHSNLACHT", // ACHT korrekt
+                "SIEBENZWÖLF",
+                "ZEHNEUNKUHR " // Leerzeichen am Ende für Rahmen
+            ].join("");
+
+            // Koordinaten für jedes Wort
+            const wordMap = {
+                ES: [[0, 0], [0, 1]],
+                IST: [[0, 3], [0, 4], [0, 5]],
+                UHR: [[9, 8], [9, 9], [9, 10]],
+                FÜNF_MIN: [[0, 7], [0, 8], [0, 9], [0, 10]],
+                ZEHN_MIN: [[1, 0], [1, 1], [1, 2], [1, 3]],
+                ZWANZIG: [[1, 4], [1, 5], [1, 6], [1, 7], [1, 8], [1, 9], [1, 10]],
+                VIERTEL: [[2, 4], [2, 5], [2, 6], [2, 7], [2, 8], [2, 9], [2, 10]],
+                NACH: [[3, 7], [3, 8], [3, 9], [3, 10]],
+                VOR: [[3, 0], [3, 1], [3, 2]],
+                HALB: [[4, 0], [4, 1], [4, 2], [4, 3]],
+                EINS: [[5, 0], [5, 1], [5, 2], [5, 3]],
+                ZWEI: [[5, 8], [5, 9], [5, 10]], // Korrigiert: ZWEI belegt 3 Buchstaben
+                DREI: [[6, 0], [6, 1], [6, 2], [6, 3]],
+                VIER: [[6, 7], [6, 8], [6, 9], [6, 10]],
+                FÜNF_HOUR: [[4, 7], [4, 8], [4, 9], [4, 10]],
+                SECHS: [[7, 0], [7, 1], [7, 2], [7, 3], [7, 4]],
+                ACHT: [[7, 7], [7, 8], [7, 9], [7, 10]],
+                SIEBEN: [[8, 0], [8, 1], [8, 2], [8, 3], [8, 4], [8, 5]],
+                ZWÖLF: [[8, 6], [8, 7], [8, 8], [8, 9], [8, 10]],
+                NEUN: [[9, 4], [9, 5], [9, 6], [9, 7]],
+                ZEHN_HOUR: [[9, 0], [9, 1], [9, 2], [9, 3]],
+                ELF: [[4, 5], [4, 6], [4, 7]],
+            };
+            
+            // Korrektur für "ZWEI" basierend auf dem Grid-Layout
+            wordMap.ZWEI = [[5, 8], [5, 9], [5, 10]];
+            
+            const hourWords = ["ZWÖLF", "EINS", "ZWEI", "DREI", "VIER", "FÜNF_HOUR", "SECHS", "SIEBEN", "ACHT", "NEUN", "ZEHN_HOUR", "ELF"];
+
+            // Buchstaben im HTML-Grid erstellen
+            for (let i = 0; i < gridLayout.length; i++) {
+                const letterDiv = document.createElement('div');
+                letterDiv.classList.add('letter');
+                letterDiv.id = `char-${Math.floor(i / 11)}-${i % 11}`;
+                letterDiv.textContent = gridLayout[i];
+                container.appendChild(letterDiv);
+            }
+
+            function updateClock() {
+                const now = new Date();
+                let hours = now.getHours();
+                const minutes = now.getMinutes();
+                const roundedMinutes = Math.floor(minutes / 5) * 5;
+
+                let wordsToLight = ["ES", "IST"];
+                let displayHour = hours % 12;
+                // Korrektur: Bei 23:xx (11pm) und 22:45-22:59 (viertel vor elf) muss displayHour korrekt auf 11 (ELF) gesetzt werden
+                if (roundedMinutes >= 25) {
+                    displayHour = (hours + 1) % 12;
+                    // Sonderfall: 0 ergibt 12 Uhr, aber wir wollen 12 -> ZWÖLF, 11 -> ELF
+                    if (displayHour === 0) displayHour = 12;
+                }
+                // Wenn displayHour == 12, dann ist es eigentlich 0 (Mitternacht), aber wir haben nur 12 Einträge (0-11)
+                if (displayHour === 12) displayHour = 0;
+                
+                // Logik für die Zeit-Phrasen
+                switch (roundedMinutes) {
+                    case 0:  wordsToLight.push("UHR"); break;
+                    case 5:  wordsToLight.push("FÜNF_MIN", "NACH"); break;
+                    case 10: wordsToLight.push("ZEHN_MIN", "NACH"); break;
+                    case 15: wordsToLight.push("VIERTEL", "NACH"); break;
+                    case 20: wordsToLight.push("ZWANZIG", "NACH"); break;
+                    case 25: wordsToLight.push("FÜNF_MIN", "VOR", "HALB"); break;
+                    case 30: wordsToLight.push("HALB"); break;
+                    case 35: wordsToLight.push("FÜNF_MIN", "NACH", "HALB"); break;
+                    case 40: wordsToLight.push("ZWANZIG", "VOR"); break;
+                    case 45: wordsToLight.push("VIERTEL", "VOR"); break;
+                    case 50: wordsToLight.push("ZEHN_MIN", "VOR"); break;
+                    case 55: wordsToLight.push("FÜNF_MIN", "VOR"); break;
+                }
+                
+                // Fügt das Stundenwort hinzu, außer wenn es "halb" ist und die Stunde 1 ist ("halb eins")
+                 if (!(roundedMinutes === 30 && displayHour === 1 && hours !== 0 && hours !== 12) || (wordsToLight.includes("UHR"))) {
+                    wordsToLight.push(hourWords[displayHour]);
+                }
+                
+                // Sonderfall: "ES IST EINS UHR"
+                if (hours % 12 === 1 && roundedMinutes < 5) {
+                    // Das Wort EINS ist bereits durch die Logik oben hinzugefügt
+                } else if(displayHour === 1 && !wordsToLight.includes("HALB")) {
+                    // Kein "S" bei "ein" nach Präpositionen, aber die Uhr hat nur "EINS"
+                    // Wir bleiben bei "EINS" wie es auf der Uhr steht
+                }
+
+                // Alle Lichter "ausschalten"
+                document.querySelectorAll('.letter').forEach(el => {
+                    el.classList.remove('lit');
+                    el.classList.add('dim');
+                });
+
+                // Die korrekten Wörter "einschalten"
+                const litCoords = new Set();
+                wordsToLight.forEach(wordKey => {
+                    if (wordMap[wordKey]) {
+                        wordMap[wordKey].forEach(coord => {
+                             litCoords.add(`${coord[0]}-${coord[1]}`);
+                        });
+                    }
+                });
+
+                litCoords.forEach(coord => {
+                    const el = document.getElementById(`char-${coord}`);
+                    if (el) {
+                        el.classList.remove('dim');
+                        el.classList.add('lit');
+                    }
+                });
+            }
+
+            updateClock();
+            setInterval(updateClock, 5000); // Aktualisiert alle 5 Sekunden
+        });
+    </script>
+</body>
+</html>
